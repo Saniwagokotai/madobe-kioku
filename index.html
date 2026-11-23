@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0e0c14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="窓辺の記録">
+<title>窓辺の記録</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+/*
+VOICE: quiet, lonely, tender — a game with almost no words
+IDEA: a white stone window in a tower, and a notebook of what was seen through it
+PICTURE: the pixel-art window itself, as large as the screen allows
+COLOUR and TYPE: night stone #0e0c14 ground in both themes, parchment ink, candle amber accent; DotGothic16
+LAYOUT: title, window, clock + write button, notebook pages below
+*/
+:root{color-scheme:dark;--bg:#0e0c14;--ink:#ece4d4;--dim:#9c93a8;--amber:#f2c46b;--line:#2a2533;--page:#e9e1cf;--pink:#3a2f26}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "DotGothic16",system-ui,sans-serif;overflow-x:clip}
+main{max-width:880px;margin:0 auto;padding:clamp(18px,4vw,40px) max(4vw,14px) 48px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;margin-bottom:14px}
+h1{font-size:clamp(26px,5vw,36px);line-height:1.05;margin:0;font-weight:400;letter-spacing:.04em}
+header p{margin:0;color:var(--dim);font-size:14px}
+.frame{position:relative;background:#07060b;border:1px solid var(--line);padding:clamp(6px,1.5vw,12px);border-radius:4px}
+canvas{display:block;width:100%;aspect-ratio:4/3;image-rendering:pixelated;image-rendering:crisp-edges;cursor:pointer}
+.toast{position:absolute;left:50%;bottom:8%;transform:translate(-50%,8px);background:rgba(14,12,20,.86);border:1px solid #4a4256;color:var(--ink);padding:8px 16px;border-radius:4px;font-size:15px;opacity:0;transition:opacity .4s,transform .4s;pointer-events:none;max-width:90%;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.bar{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;justify-content:space-between;margin-top:16px}
+.clock{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+#tm{font-size:32px;line-height:1;color:var(--amber);font-variant-numeric:tabular-nums;white-space:nowrap}
+#ph{color:var(--dim);font-size:15px}
+button{font:inherit;color:var(--ink);background:#17141f;border:1px solid var(--line);border-radius:4px;min-height:44px;padding:0 14px;cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+#write{background:var(--amber);color:#1a1408;border-color:var(--amber);font-size:17px;padding:0 22px}
+details{margin-top:18px;border:1px solid var(--line);border-radius:4px;padding:0 14px}
+summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--dim);font-size:14px}
+.dbg{display:grid;gap:12px;padding:4px 0 16px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row span{color:var(--dim);font-size:13px;width:6em}
+.row button{font-size:14px}
+.row button[aria-pressed=true]{background:var(--amber);color:#1a1408;border-color:var(--amber)}
+input[type=range]{flex:1 1 200px;height:44px;accent-color:var(--amber)}
+.book{margin-top:40px}
+.book h2{font-size:24px;font-weight:400;margin:0 0 4px;display:flex;align-items:baseline;gap:12px}
+.book h2 small{font-size:15px;color:var(--dim)}
+.book>p{margin:0 0 18px;color:var(--dim);font-size:14px}
+.pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+.pg{background:var(--page);color:var(--pink);border-radius:3px;padding:10px 10px 14px;box-shadow:0 2px 0 #b9ae98}
+.pic{aspect-ratio:124/128;background:#d8cfba;border-radius:2px;display:grid;place-items:center;color:#8c8270;font-size:13px;overflow:hidden}
+.pic img{width:100%;height:100%;display:block;image-rendering:pixelated}
+.pg h3{font-size:16px;font-weight:400;margin:10px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.rar{font-size:12px;line-height:1;padding:3px 6px;border-radius:2px;white-space:nowrap;border:1px solid currentColor;opacity:.85}
+.rar.r0{color:#8a8070}.rar.r1{color:#4f7a5a}.rar.r2{color:#4a62a0}.rar.r3{color:#1a1408;background:var(--amber);border-color:var(--amber);opacity:1}
+.pg.none .rar.r0,.pg.none .rar.r1,.pg.none .rar.r2{color:#6e6578}
+.pg .meta{font-size:13px;color:#7d715e;margin:0}
+.pg p{font-size:14px;line-height:1.65;margin:6px 0 0}
+.pg.heard .pic{background:repeating-linear-gradient(0deg,#ddd4bf 0 6px,#d3c9b2 6px 7px)}
+.pg.heard p{color:#7d715e}
+.pg.none{background:#2a2530;box-shadow:none;color:#6e6578}
+.pg.none .pic{background:#221e28;color:#4e4658}
+.note{color:var(--dim);font-size:13px;margin:22px 0 0;line-height:1.7}
+@media(max-width:600px){main{padding:14px 14px 40px}header{margin-bottom:10px}h1{font-size:24px}.frame{margin:0 -14px;border:0;border-radius:0;padding:0}.toast{font-size:14px;bottom:6%}#tm{font-size:28px}#write{width:100%;min-height:52px}.bar{margin-top:12px}.book{margin-top:32px}.pages{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.pg p{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>窓辺の記録</h1><p>窓の景色と記録帳</p></header>
+<div class="frame"><canvas id="c" aria-label="城の窓から見える海辺の町の景色。タップで書き留める"></canvas><div class="toast" id="toast" role="status" aria-live="polite"></div></div>
+<div class="bar">
+  <div class="clock"><span id="tm">--:--</span><span id="ph"></span></div>
+  <button type="button" id="write">書き留める</button>
+</div>
+<details>
+  <summary>確認用の操作</summary>
+  <div class="dbg">
+    <div class="row" id="speeds"><span>時間の速さ</span>
+      <button type="button" data-s="1">ふつう</button><button type="button" data-s="20">×20</button><button type="button" data-s="300">×300</button></div>
+    <div class="row"><span>時刻</span><input type="range" id="sl" min="0" max="23.99" step="0.01" aria-label="ゲーム内の時刻"></div>
+    <div class="row" id="seas"><span>季節へ飛ぶ</span><button type="button" data-q="0">春</button><button type="button" data-q="1">夏</button><button type="button" data-q="2">秋</button><button type="button" data-q="3">冬</button></div>
+    <div class="row"><span>その他</span><button type="button" id="skip">1日閉じていたことにする</button><button type="button" id="day">次の日へ</button><button type="button" id="reset">記録を消す</button></div>
+  </div>
+</details>
+<section class="book"><h2>記録帳 <small id="cnt"></small></h2><p>見つけて書き留めた景色は絵つきで、閉じている間のことは言葉だけで残ります。窓辺に来た生き物には、そっと触れることもできます。</p><div class="pages" id="pages"></div></section>
+<p class="note">窓の外の1日は、現実の2時間40分ほどで過ぎていきます。季節は現実の1週間ごとに移ります。<br><span id="sync">記録を読み込んでいます。</span></p>
+</main>
+<script>
+{
+const W=200,H=150,HZ=92;
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+cv.width=W;cv.height=H;
+const img=ctx.createImageData(W,H),D=img.data;
+const hex=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+const mix=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+const cl=(v,a,b)=>v<a?a:v>b?b:v;
+const hash=(x,y)=>((Math.imul(x|0,73856093)^Math.imul(y|0,19349663))>>>0)%1000/1000;
+const BY=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]].map(r=>r.map(v=>(v+.5)/16));
+function px(x,y,c){x|=0;y|=0;if(x<0||y<0||x>=W||y>=H)return;const i=(y*W+x)*4;D[i]=c[0];D[i+1]=c[1];D[i+2]=c[2];D[i+3]=255}
+function pa(x,y,c,a){x|=0;y|=0;if(x<0||y<0||x>=W||y>=H)return;const i=(y*W+x)*4;D[i]+=(c[0]-D[i])*a;D[i+1]+=(c[1]-D[i+1])*a;D[i+2]+=(c[2]-D[i+2])*a}
+
+/* ---------- world state ---------- */
+const SEAS=['春','夏','秋','冬'],SD=63,RX=9;
+function wx(b){const se=((Math.floor(Math.floor(b/6)/SD)%4)+4)%4,r=hash(b,77);return r<(se==3?.24:.17)?(se==3?'snow':'rain'):r<.36?'cloudy':'clear'}
+function st(g){const h=((g%24)+24)%24,day=Math.floor(g/24),se=((Math.floor(day/SD)%4)+4)%4,b=Math.floor(g/4),dN=h<5?day-1:day,sN=((Math.floor(dN/SD)%4)+4)%4;
+  return{g,h,day,se,b,dN,w:wx(b),pw:wx(b-1),inB:g-b*4,snowed:se==3&&(wx(b)=='snow'||wx(b-1)=='snow'||wx(b-2)=='snow'||wx(b-3)=='snow'),
+    byk:sN==1&&hash(dN,117)<.12,aur:sN==3&&hash(dN,119)<.12}}
+const dry=s=>s.w!='rain'&&s.w!='snow';
+const nightH=s=>s.h>=21||s.h<4;
+const RAR=['よく見る','ときどき','まれ','幻'];
+const EV=[
+ {id:'kotori',r:0,n:'窓辺の小鳥',t:'小さな鳥が窓枠に止まって、こちらを一度だけ見た。',u:'窓枠に、小さな足あとがついていた。',on:s=>s.h>=7&&s.h<16&&dry(s)&&hash(Math.floor(s.g*2),101)<.72},
+ {id:'ichi',r:0,n:'朝の市場',t:'港に色とりどりの屋根が並んだ。人がひっきりなしに行き来している。',u:'朝のうちだけ、港のほうがにぎやかだったらしい。',on:s=>s.h>=6&&s.h<10&&dry(s)&&hash(s.day,109)<1},
+ {id:'sentaku',r:0,n:'洗濯日和',t:'家と家のあいだに洗濯物が渡されて、風にはためいている。',u:'よく晴れて、いい風が吹いていた日らしい。',on:s=>s.h>=9&&s.h<15&&s.w=='clear'&&s.se!=3&&hash(s.day,111)<.9},
+ {id:'neko',r:1,n:'浜辺の猫',t:'浜に猫が一匹すわって、ずっと海を見ている。',u:'窓の下のほうで、猫の鳴き声がしていた。',on:s=>s.h>=10&&s.h<16&&dry(s)&&hash(s.day,103)<.4},
+ {id:'wataridori',r:1,n:'渡り鳥',t:'鳥の群れが、きれいな形のまま海の向こうへ渡っていった。',u:'空のほうから、たくさんの羽音が聞こえた気がする。',on:s=>(s.se==0||s.se==2)&&s.h>=6&&s.h<10&&dry(s)&&hash(s.day,105)<.6},
+ {id:'hitotsu',r:1,n:'ひとつだけの灯り',t:'町じゅうが眠っているのに、一軒だけ灯りがついている。',u:'夜更けに、どこかの窓が明るかった気がする。',on:s=>s.h>=1&&s.h<4&&dry(s)&&hash(s.dN,115)<.8},
+ {id:'kujira',r:2,n:'鯨',t:'沖で、大きな背中がゆっくり浮かんで、また沈んだ。',u:'沖のほうで、白いしぶきが上がっていたらしい。',on:s=>s.h>=8&&s.h<17&&dry(s)&&hash(Math.floor(s.g/2),107)<.1},
+ {id:'hanabira',r:2,n:'白い花びらの日',t:'町の上に白い花びらが舞っている。誰かのお祝いらしい。',u:'窓枠に白い花びらが一枚、引っかかっていた。',on:s=>(s.se==0||s.se==1)&&s.h>=10&&s.h<15&&s.w=='clear'&&hash(s.day,113)<.22},
+ {id:'byakuya',r:3,n:'白夜',t:'夜になっても、空がいつまでも暗くならない。',u:'いつまでも明るい夜があったらしい。眠れたのだろうか。',on:s=>s.byk&&(s.h>=21.5||s.h<3)&&dry(s)},
+ {id:'aurora',r:3,n:'オーロラ',t:'北の空に、光の幕がゆれている。音はなにもしない。',u:'夜のあいだ、部屋の壁がほんのり緑色に染まっていた。',on:s=>s.aur&&nightH(s)&&s.w!='rain'&&s.w!='snow'},
+ {id:'getsuniji',r:3,n:'月の虹',t:'雨上がりの夜、月明かりだけでできた白い虹が出た。',u:'雨上がりの夜は、やけに静かで明るかった。',on:s=>((s.dN%8)+8)%8==4&&s.pw=='rain'&&s.w=='clear'&&(s.h>=20||s.h<4)},
+ {id:'ryuseiu',r:3,n:'流星雨',t:'空じゅうに星が降っている。数えるのをやめた。',u:'夜通し、窓の外がちらちらと明るかった。',on:s=>s.w=='clear'&&s.h>=0&&s.h<3&&hash(s.dN,121)<.05},
+ {id:'chou',r:1,n:'迷い込んだ蝶',t:'白い蝶が一匹、窓の格子のあいだを行ったり来たりしている。',u:'窓枠に、蝶の鱗粉がほんの少し残っていた。',on:s=>(s.se==0||s.se==1)&&s.h>=10&&s.h<16&&dry(s)&&hash(Math.floor(s.g*2),131)<.4&&flee!==Math.floor(s.g*2)},
+ {id:'okurimono',r:2,manual:1,n:'小鳥の贈りもの',t:'何度か会った小鳥が、窓枠に青い羽根を一枚置いていった。',u:'',on:s=>!!pet.gift},
+ {id:'hana',r:0,n:'花の盛り',t:'丘の木々がいっせいに咲いた。風が吹くたび、町の屋根が少し白くなる。',u:'窓枠に花びらが一枚はさまっていた。どこかで咲いていたらしい。',on:s=>s.se==0&&s.h>=8&&s.h<17&&s.w=='clear'},
+ {id:'kiri',r:1,n:'霧の朝',t:'霧で町が消えた。灯台の先だけが浮かんでいる。',u:'朝のうちは、窓の外が真っ白だったようだ。石が冷たく湿っている。',on:s=>(s.se==0||s.se==2)&&hash(s.day,31)<.45&&s.h>=5&&s.h<8.5},
+ {id:'niji',r:2,n:'雨上がりの虹',t:'雨上がり、町の上に虹がかかった。',u:'雨の匂いだけが残っていた。虹は出ただろうか。',on:s=>s.se!=3&&s.pw=='rain'&&s.w=='clear'&&s.inB<2&&s.h>=8&&s.h<17},
+ {id:'nyudo',r:1,n:'入道雲',t:'海の向こうに、城よりも高い雲が立っていた。',u:'遠くで雷のような音がしていた気がする。',on:s=>s.se==1&&s.h>=12&&s.h<17&&s.w=='clear'&&hash(s.day,71)<1},
+ {id:'matsuri',r:2,n:'祭りの灯り',t:'町から灯りがいくつも空へのぼっていく。何を祝っているのかは分からない。',u:'夜遅くまで、笛のような音が遠くから聞こえていた。',on:s=>s.se==1&&hash(s.day,41)<.2&&s.h>=19.5&&s.h<23.5&&dry(s)},
+ {id:'momiji',r:1,n:'燃える丘',t:'夕日が沈むころ、丘はほとんど燃えているように見えた。',u:'目が覚めると、窓辺に赤い葉が一枚落ちていた。',on:s=>s.se==2&&s.h>=17&&s.h<19&&dry(s)},
+ {id:'yuki',r:1,n:'雪の朝',t:'夜のうちに雪が積もった。窓枠に指で線を引いてみる。',u:'窓枠に、溶けかけた雪が残っていた。',on:s=>s.snowed&&s.h>=6&&s.h<10&&s.w!='snow'},
+ {id:'mangetsu',r:1,n:'満月',t:'月がまるい。海に一本、白い道ができている。',u:'夜のあいだ、部屋がやけに明るかった。',on:s=>((s.dN%8)+8)%8==4&&(s.h>=19.5||s.h<5)&&dry(s)},
+ {id:'ryusei',r:2,n:'流れ星',t:'星がいくつも、海のほうへ落ちていった。',u:'夜更けに、窓の外が何度か明るくなった気がした。',on:s=>(s.h>=21||s.h<4)&&s.w=='clear'&&hash(Math.floor(s.g),61)<.15},
+ {id:'ikoku',r:2,n:'異国の帆',t:'見たことのない赤い帆の船が、沖に停まっている。',u:'港のほうが一日じゅう騒がしかった。',on:s=>hash(s.day,51)<.14&&s.h>=9&&s.h<15&&dry(s)}
+];
+
+/* ---------- sky ---------- */
+const KEYS=[[0,'#070a1f','#141a3d',.2,'#6a78b8'],[4.5,'#0b0f2a','#2a2550',.22,'#6a6aa8'],[5.6,'#2a2760','#e0896a',.45,'#e8a890'],[7,'#5b8fd0','#f3d2a0',.8,'#ffe2c0'],[12,'#3f86d6','#a9d6f2',1,'#ffffff'],[16.5,'#4b7fcc','#e9c28a',.9,'#ffe6c2'],[18.3,'#3a3474','#f0784a',.6,'#ff9a70'],[19.5,'#1a1846','#6a3a6a',.32,'#9070a0'],[21,'#0a0d28','#1c1f48',.2,'#6a78b8'],[24,'#070a1f','#141a3d',.2,'#6a78b8']].map(k=>[k[0],hex(k[1]),hex(k[2]),k[3],hex(k[4])]);
+function base(h){let i=0;while(h>=KEYS[i+1][0])i++;const a=KEYS[i],b=KEYS[i+1],t=(h-a[0])/(b[0]-a[0]),q=t*t*(3-2*t);
+  return{top:mix(a[1],b[1],q),bot:mix(a[2],b[2],q),L:a[3]+(b[3]-a[3])*q,tint:mix(a[4],b[4],q)}}
+function env(s){const bk=s.byk&&(s.h>=19||s.h<5);const e=base(bk?18.75:s.h);if(bk){e.top=mix(e.top,[150,140,200],.35);e.bot=mix(e.bot,[250,200,170],.3);e.L=.56}
+  const gr=[118,124,136].map(v=>v*Math.max(.22,e.L));
+  if(!dry(s)){e.top=mix(e.top,gr,.7);e.bot=mix(e.bot,gr,.6);e.L*=.78;e.tint=mix(e.tint,[200,205,215],.5)}
+  else if(s.w=='cloudy'){e.top=mix(e.top,gr,.3);e.bot=mix(e.bot,gr,.2);e.L*=.92}
+  return e}
+const lit=(c,e,k=1)=>{const L=e.L*k;return[c[0]*e.tint[0]/255*L,c[1]*e.tint[1]/255*L,c[2]*e.tint[2]/255*L]};
+const inR=(h,a,b)=>a<b?h>=a&&h<b:h>=a||h<b;
+const PAL=[
+ {hill:'#5f8a4e',dot:'#f4bfcf',land:'#5c7f44',land2:'#4a6a38',mt:'#7d8fb0'},
+ {hill:'#3f6e3a',dot:'#2c552b',land:'#4a7a3a',land2:'#3a6430',mt:'#7088a8'},
+ {hill:'#9a6a34',dot:'#d4582e',land:'#8a7a3e',land2:'#a0582c',mt:'#8a8aa0'},
+ {hill:'#dfe4ea',dot:'#9fb0a4',land:'#e6eaee',land2:'#cdd5de',mt:'#e8ecf2'}].map(p=>Object.fromEntries(Object.entries(p).map(([k,v])=>[k,hex(v)])));
+
+/* ---------- terrain & props ---------- */
+const mt1=[],mt2=[];
+for(let x=0;x<W;x++){mt1[x]=72+Math.round(6*Math.sin(x*.045+1)+4*Math.sin(x*.13+2)+2*Math.sin(x*.31));mt2[x]=84+Math.round(3*Math.sin(x*.07+4)+2*Math.sin(x*.21+1))}
+const shore=x=>HZ+(x-112)*.4;
+const landTop=x=>HZ-Math.min(5,Math.floor((x-110)/3))+Math.round(Math.sin(x*.15));
+const stars=Array.from({length:80},(_,i)=>({x:Math.floor(hash(i,7)*W),y:Math.floor(hash(i,13)*84),b:.4+hash(i,3)*.6,p:hash(i,5)*6}));
+const houses=[];
+for(let r=0;r<4;r++){const base=94+r*5;let x=Math.ceil(112+(base-HZ)/.4)+2,n=0;
+  while(x<W){const w=5+Math.floor(hash(x,r)*4),h=4+Math.floor(hash(r,x)*4),win=[];
+    for(let k=0;k<1+(w>6);k++){const q=hash(x+k,r*9+1);win.push({x:x+2+k*3,y:base-h+2,on:17.5+q*2,off:q<.15?7:q<.45?23:(q*6)%5})}
+    houses.push({x,base,w,h,roof:hex(n%3==1?'#4a5a7a':'#8a4a3a'),wall:hex(hash(x,r+5)<.5?'#d9c7a3':'#c9b89a'),win});x+=w+1;n++}}
+const clouds=Array.from({length:7},(_,i)=>({x:hash(i,21)*280,y:16+hash(i,22)*44,s:.6+hash(i,23)*.8,extra:i>=4,p:[[0,0,6],[6,1,5],[-6,1,4],[3,-3,4]].map(q=>[q[0]*(.8+hash(i,q[2])*.6),q[1],q[2]*(.7+hash(i,24)*.5)])}));
+const RB=[[230,80,80],[240,160,70],[240,225,100],[110,200,110],[90,140,230],[150,100,200]];
+
+/* ---------- window frame (white stone) ---------- */
+const T=new Uint8Array(W*H),BASE=[];
+const CX=100,CY=70,R=56,X0=44,X1=156,SILL=128;
+for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x;let t=1,d=99;
+  if(x>=X0&&x<X1&&y<SILL&&(y>=CY||(x-CX)**2+(y-CY)**2<R*R)){d=Math.min(x-X0,X1-1-x,SILL-1-y);if(y<CY)d=Math.min(d,R-Math.hypot(x-CX,y-CY));t=d<3?2:0}
+  if(y>=SILL&&y<SILL+7&&x>=X0-6&&x<X1+6)t=3;
+  T[i]=t;
+  const off=Math.floor(y/6)%2?7:0,mortar=y%6==0||(x+off)%14==0,bv=hash(Math.floor((x+off)/14),Math.floor(y/6));
+  if(t==1)BASE[i]=mortar?[176,172,168]:mix([214,210,202],[232,228,220],bv);
+  else if(t==2)BASE[i]=mix([236,232,224],[250,248,242],hash(x,y)*.6+(2-d)*.2);
+  else if(t==3)BASE[i]=y==SILL?[252,250,244]:y>=SILL+5?[170,166,160]:mix([232,228,220],[242,238,230],hash(x,y));
+  else BASE[i]=null;
+  if(t==1&&y==SILL+7&&x>=X0-6&&x<X1+6)BASE[i]=[120,116,112];
+}
+const BARS=[81,118];
+const HW=(houses.find(v=>v.x>=136&&v.x<150&&v.base>=99)||houses[0]).win[0];
+
+/* ---------- draw ---------- */
+function draw(s,A,rt){
+  const e=env(s),P=PAL[s.se],wet=!dry(s),night=e.L<.45;
+  /* sky */
+  for(let y=0;y<=HZ;y++){const q=cl(y/HZ,0,1)*7;for(let x=0;x<W;x++){const f=q-Math.floor(q);const k=Math.min(7,Math.floor(q)+(f>BY[y&3][x&3]?1:0));px(x,y,mix(e.top,e.bot,k/7))}}
+  /* stars */
+  const sv=cl((.5-e.L)/.25,0,1)*(s.w=='clear'?1:s.w=='cloudy'?.35:0);
+  if(sv>0)for(const t of stars){const tw=.6+.4*Math.sin(rt*1.3+t.p);pa(t.x,t.y,[255,250,225],sv*t.b*tw);if(t.b>.92)pa(t.x+1,t.y,[255,250,225],sv*.3*tw)}
+  /* meteors */
+  if(A.aurora)for(let x=0;x<W;x++){const top=24+7*Math.sin(x*.05+rt*.3)+3*Math.sin(x*.13-rt*.5),br=.6+.4*Math.sin(x*.21+rt*.8);for(let y=Math.max(0,top|0);y<top+34;y++){const q=(y-top)/34;pa(x,y,mix([190,110,230],[90,250,160],Math.min(1,q*1.5)),(1-q)*.75*br*(q<.08?q/.08:1))}}
+  const met=(k0,per,len)=>{const k=Math.floor(rt/per),ph=rt%per;if(ph<.8){const x0=50+hash(k,k0)*120,y0=6+hash(k,k0+1)*36,q=ph/.8;for(let i=0;i<len;i++){const hx=x0-(q*34-i*1.1),hy=y0+(q*34-i*1.1)*.45;pa(hx,hy,[255,250,230],(1-i/len)*(1-q*.4))}}};
+  if(A.ryusei)met(1,4,14);
+  if(A.ryuseiu)for(let j=0;j<12;j++)met(10+j*3,.9+j*.23,10+j%3*3);
+  /* sun & moon */
+  let sx=null,sy,scol;
+  if(!wet&&h0(s.h,5.8,18.4)){const p=(s.h-5.8)/12.6;sx=30+p*140;sy=HZ-Math.sin(p*Math.PI)*60;scol=mix([255,190,120],[255,246,214],Math.sin(p*Math.PI));
+    const a=s.w=='cloudy'?.5:1;
+    for(let dy=-11;dy<=11;dy++)for(let dx=-11;dx<=11;dx++){const r=Math.hypot(dx,dy);if(r<=4.6)pa(sx+dx,sy+dy,scol,a);else if(r<11)pa(sx+dx,sy+dy,scol,.22*a*(1-r/11))}}
+  const mh=(s.h-18.6+24)%24;
+  if(!wet&&mh<11.6){const p=mh/11.6,mx=24+p*152,my=HZ-Math.sin(p*Math.PI)*64,dd=(1-Math.abs((((s.dN%8)+8)%8)-4)/4)*8;
+    for(let dy=-8;dy<=8;dy++)for(let dx=-8;dx<=8;dx++){const r=Math.hypot(dx,dy);if(r<=3.6){if(Math.hypot(dx+dd,dy)>3.6||dd>=8)px(mx+dx,my+dy,[236,234,214]);else pa(mx+dx,my+dy,[120,130,160],.15)}else if(r<8+(dd>=8?3:0))pa(mx+dx,my+dy,[220,220,255],(dd>=8?.18:.1)*(1-r/11))}
+    if(sx===null&&dd>3){sx=mx;sy=my;scol=[230,230,215]}}
+  /* rainbow */
+  if(A.getsuniji){for(let y=10;y<=HZ;y++)for(let x=0;x<W;x++){const r=Math.hypot(x-100,y-118);if(r>=66&&r<74)pa(x,y,mix(RB[Math.floor((r-66)/1.34)],[235,240,255],.7),.22)}}
+  if(A.niji){const fade=cl((2-s.inB)/1.2,0,1)*.38;for(let y=10;y<=HZ;y++)for(let x=0;x<W;x++){const r=Math.hypot(x-100,y-118);if(r>=66&&r<74)pa(x,y,RB[Math.floor((r-66)/1.34)],fade)}}
+  /* thunderhead */
+  if(A.nyudo){const c1=lit([250,250,252],e,1.05),c2=lit([200,205,220],e);for(const [ox,oy,r] of [[52,80,14],[66,78,12],[58,64,13],[48,52,10],[60,46,9],[70,58,9],[40,72,9]])for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)if(dx*dx+dy*dy<=r*r)px(ox+dx,oy+dy,dy>r*.4&&oy>70?c2:c1)}
+  /* clouds */
+  let cc=mix(lit([246,244,248],e,1.05),e.top,.18);if(wet)cc=mix(cc,[90,95,108].map(v=>v*Math.max(.3,e.L)),.6);const cs=mix(cc,e.top,.35);
+  for(const c of clouds){if(c.extra&&s.w=='clear')continue;const x0=((c.x+rt*c.s*1.2)%300)-50;
+    for(const [ox,oy,r] of c.p)for(let dy=-r;dy<=r;dy++)for(let dx=-r*1.6;dx<=r*1.6;dx++){if((dx/1.6)**2+dy*dy<=r*r)px(x0+ox+dx,c.y+oy+dy,dy>r*.35?cs:cc)}}
+  /* mountains & hills */
+  const m1=mix(lit(P.mt,e),e.bot,s.se==3?.25:.45),cap=mix(lit([240,244,250],e),e.bot,.3),m2=mix(lit(P.hill,e),e.bot,.2),m2d=mix(lit(P.dot,e),e.bot,.15);
+  for(let x=0;x<W;x++){for(let y=mt1[x];y<=HZ;y++)px(x,y,s.se==0&&y<mt1[x]+2&&mt1[x]<70?cap:m1);for(let y=mt2[x];y<=HZ;y++)px(x,y,hash(x,y*3)<(A.hana?.32:.16)?m2d:m2)}
+  /* sea */
+  const sea0=mix(mix(e.bot,[30,60,96],.5),[0,0,0],1-Math.max(.35,e.L)),sea1=mix(lit([16,40,70],e,1),[6,10,22],.4),glint=mix(e.bot,[255,255,255],.5);
+  for(let y=HZ+1;y<H;y++){const q=cl((y-HZ)/30,0,1)*4;for(let x=0;x<W;x++){const f=q-Math.floor(q);const k=Math.min(4,Math.floor(q)+(f>BY[y&3][x&3]?1:0));px(x,y,mix(sea0,sea1,k/4));
+    const g=Math.sin(x*.9+y*2.1+rt*1.5)+Math.sin(x*.37-y*.8-rt*.9);if(g>(wet?1.97:1.9))pa(x,y,glint,.4)}}
+  if(sx!==null&&sy<HZ+2){const ra=A.mangetsu?.75:.55;for(let y=HZ+1;y<H;y++){const w=1.5+(y-HZ)*.1;for(let x=Math.floor(sx-w);x<=sx+w;x++){if(Math.sin(y*1.9+rt*3+x)>-.1)pa(x,y,scol,ra*(1-(y-HZ)/60))}}}
+  /* land & town */
+  const land=lit(P.land,e),land2=lit(P.land2,e),sand=lit(s.se==3?[236,238,242]:[200,180,138],e),snow=lit([244,246,250],e);
+  for(let x=110;x<W;x++){const t=landTop(x),b=Math.min(H,shore(x));for(let y=t;y<b;y++)px(x,y,(x+y)%5==0?land2:land);px(x,b,sand)}
+  const WIN=[255,207,110];
+  for(const o of houses){const wl=lit(o.wall,e),rf=lit(o.roof,e);
+    for(let y=o.base-o.h;y<o.base;y++)for(let x=o.x;x<o.x+o.w;x++)px(x,y,x==o.x+o.w-1?mix(wl,[0,0,0],.25):wl);
+    for(let r=0;r<3;r++)for(let x=o.x-1+r;x<o.x+o.w+1-r;x++)px(x,o.base-o.h-1-r,s.se==3&&r>0?snow:rf);
+    for(const w of o.win){if(A.hitotsu&&w===HW)for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]])pa(w.x+dx,w.y+dy,WIN,.45);const on=A.hitotsu?w===HW:night&&(inR(s.h,w.on,w.off)||A.matsuri);px(w.x,w.y,on?WIN:mix(wl,[30,30,40],.6));if(on){pa(w.x,w.y+1,WIN,.35);pa(w.x+1,w.y,WIN,.2)}}}
+  /* lighthouse */
+  const lx=113,lt=landTop(113);
+  for(let y=lt-13;y<lt;y++)for(let x=lx;x<lx+3;x++)px(x,y,lit(Math.floor((y-lt)/3)%2?[220,214,200]:[176,62,52],e));
+  px(lx,lt-14,lit([60,50,50],e));px(lx+1,lt-14,night||A.kiri?[255,242,176]:lit([200,200,180],e));px(lx+2,lt-14,lit([60,50,50],e));
+  if(night||A.kiri){const a=Math.sin(rt*1.6),len=Math.abs(a)*46,dir=a>0?-1:1;for(let i=2;i<len;i++)pa(lx+1+dir*i,lt-14+i*.04,[255,240,180],.45*(1-i/len));pa(lx+1,lt-14,[255,255,220],.6)}
+  /* ships */
+  const hull=lit([58,42,34],e),sail=lit([236,228,210],e);
+  if(A.ikoku){const x=58,y=106+Math.round(Math.sin(rt*1.2)*.6),red=lit([178,48,44],e);
+    for(let i=0;i<18;i++)px(x+i,y,hull);for(let i=1;i<17;i++)px(x+i,y+1,hull);for(let i=3;i<15;i++)px(x+i,y+2,hull);
+    for(const m of [4,9,14]){for(let yy=y-12;yy<y;yy++)px(x+m,yy,hull);for(let r=0;r<7;r++)for(let i=-2;i<=2;i++)if(Math.abs(i)<=1+r/3)px(x+m+i,y-10+r,red)}
+    px(x+9,y-13,red);px(x+10,y-13,lit([240,210,80],e));px(x+11,y-13,red)}
+  const sp=(rt%160)/160;
+  if(sp<.75&&!wet){const x=150-sp/.75*175,y=113;
+    for(let i=0;i<9;i++)px(x+i,y,hull);for(let i=1;i<8;i++)px(x+i,y+1,hull);
+    for(let r=0;r<6;r++)for(let i=0;i<=r/2;i++){px(x+3-i,y-6+r,sail);px(x+5+i,y-6+r,sail)}
+    px(x+4,y-7,hull);if(night)px(x+8,y-1,WIN)}
+  /* lanterns */
+  if(A.matsuri)for(let i=0;i<18;i++){const q=((rt*2.4+hash(i,92)*80)%80)/80,x=124+hash(i,91)*70+Math.sin(rt*.6+i)*3,y=100-q*80,a=1-q*.8;pa(x,y,[255,176,80],a);pa(x+1,y,[255,176,80],a);pa(x,y-1,[255,214,150],a);pa(x+1,y-1,[255,214,150],a);for(const [dx,dy] of [[-1,0],[2,0],[-1,-1],[2,-1],[0,1],[1,1],[0,-2],[1,-2]])pa(x+dx,y+dy,[255,150,60],a*.3)}
+  /* birds */
+  if(e.L>.6&&!wet){const bx=((rt*7)%320)-60,f=Math.floor(rt*4)%2;for(let i=0;i<3;i++){const x=bx+i*7,y=34+i*3+Math.sin(rt+i)*2,c=lit([40,40,50],e);px(x,y,c);px(x-1,y-1+f,c);px(x+1,y-1+f,c)}}
+  /* whale */
+  if(A.kujira){const ph=rt%11,x=78,y=108;if(ph<7){const up=ph<1?ph:ph>6?7-ph:1,bk=lit([30,38,56],e),hl=lit([96,112,136],e);for(let i=-10;i<=10;i++){const hh=Math.round((1-(i/10.5)**2)*4.5*up);for(let k=0;k<hh;k++)px(x+i,y-k,k==hh-1?hl:bk)}
+    if(ph>1.2&&ph<3.5){const q=(ph-1.2)/2.3;for(let i=0;i<26;i++){const a=hash(i,3)*Math.PI,r=q*7*hash(i,4);pa(x-3+Math.cos(a)*r*.7,y-5-Math.sin(a)*r*1.6,[240,246,252],.95*(1-q))}}}
+    for(let i=-9;i<=9;i++)if(Math.sin(i+rt*3)>.3)pa(x+i,y+1,[220,230,240],.35)}
+  /* migrating birds */
+  if(A.wataridori){const bx=185-((rt*5)%190),f=Math.floor(rt*3)%2,c=lit([46,46,56],e);for(let k=-4;k<=4;k++){const x=bx+Math.abs(k)*4,y=30+k*2.4+(f&&k%2?1:0);px(x,y,c);px(x-1,y-1+f,c);px(x+1,y-1+f,c)}}
+  /* market */
+  if(A.ichi){const cols=[[200,60,50],[230,190,70],[70,120,190],[90,160,90]];for(let k=0;k<5;k++){const x=119+k*6,y=Math.floor(shore(x))-2;for(let i=0;i<4;i++)px(x+i,y-2,lit(i%2?[240,236,226]:cols[k%4],e));px(x,y-1,lit([90,70,50],e));px(x+3,y-1,lit([90,70,50],e));px(x+1,y-1,lit(cols[(k+1)%4],e));px(x+2,y-1,lit(cols[(k+2)%4],e))}
+    for(let i=0;i<9;i++){const q=((rt*(3+hash(i,7)*4)+hash(i,8)*60)%60)/60,x=118+q*34,y=Math.floor(shore(x))-1;px(x,y,lit(cols[i%4],e));px(x,y-1,lit([230,190,150],e))}}
+  /* laundry */
+  if(A.sentaku){const cols=[[240,240,236],[200,80,80],[90,140,210],[240,210,90]];for(const [lx0,ly,len] of [[121,92,7],[131,96,8],[141,100,9]]){for(let i=0;i<len;i++){const sag=Math.round(Math.sin(i/len*Math.PI)*1.2);px(lx0+i,ly+sag,lit([150,140,130],e));if(i%3==1){const f=Math.sin(rt*4+i)>0?1:0;px(lx0+i,ly+sag+1,lit(cols[(i+ly)%4],e));px(lx0+i+f,ly+sag+2,lit(cols[(i+ly)%4],e))}}}}
+  /* cat */
+  if(A.neko){const x=138,y=Math.floor(shore(138))-1,c=lit([42,38,44],e),tw=Math.sin(rt*2)>0?0:1;for(const [dx,dy] of [[0,-4],[2,-4],[0,-3],[1,-3],[2,-3],[0,-2],[1,-2],[2,-2],[0,-1],[1,-1],[2,-1],[3,-1],[0,0],[1,0],[2,0],[3,0],[4,-1-tw],[5,-2-tw]])px(x+dx,y+dy,c);px(x+1,y-3,lit([200,190,90],e))}
+  /* petals & flag */
+  if(A.hanabira){const o=houses.find(v=>v.x>=132&&v.x<146)||houses[0],fx=o.x+1,fy=o.base-o.h-3;for(let y=fy-5;y<fy;y++)px(fx,y,lit([90,70,50],e));for(let i=1;i<5;i++)for(let j=0;j<2;j++)px(fx+i,fy-5+j+(Math.sin(rt*5+i)>.4?1:0),lit([250,250,250],e));
+    for(let i=0;i<34;i++){const q=((rt*(4+hash(i,5)*3)+hash(i,6)*70)%70),x=106+hash(i,7)*50+Math.sin(rt+i)*4,y=50+q;pa(x,y,[255,255,255],.95*(1-q/70));pa(x+1,y,[255,240,245],.5*(1-q/70))}}
+  /* fog */
+  if(A.kiri){const fc=mix(e.bot,[235,235,240],.6);for(let y=60;y<H;y++){const a=cl(.9-Math.abs(y-98)/34,0,.85);for(let x=0;x<W;x++)pa(x,y,fc,a*(.85+.15*Math.sin(x*.08+rt*.3+y*.1)))}pa(lx+1,lt-14,[255,242,176],1)}
+  /* rain / snow */
+  if(s.w=='rain'){const rc=mix(e.bot,[220,225,235],.5);for(let i=0;i<110;i++){const x=(hash(i,1)*W+rt*25)%W,y=(hash(i,2)*H+rt*150)%H;for(let k=0;k<4;k++)pa(x-k*.4,y-k,rc,.35)}}
+  if(s.w=='snow'){for(let i=0;i<90;i++){const x=(hash(i,1)*W+Math.sin(rt*.7+i)*4+rt*4)%W,y=(hash(i,2)*H+rt*(10+hash(i,3)*8))%H;pa(x,y,[250,250,255],.85)}}
+  /* wall, bars, sill snow */
+  const wk=.26+.68*e.L,wt=mix(e.tint,[255,255,255],.45);
+  for(let i=0;i<W*H;i++){if(T[i]){const b=BASE[i],k=T[i]==2?wk*1.08:T[i]==3?wk*1.04:wk*.9,o=i*4;D[o]=b[0]*wt[0]/255*k;D[o+1]=b[1]*wt[1]/255*k;D[o+2]=b[2]*wt[2]/255*k}}
+  const iron=lit([46,44,52],e,1.3),hi=lit([110,106,116],e,1.3);
+  for(const bx of BARS)for(let y=0;y<SILL;y++){if(T[y*W+bx]==1&&T[y*W+bx+1]==1)continue;px(bx,y,hi);px(bx+1,y,iron)}
+  if(s.snowed){const sc=mix(lit([255,255,255],e,1.1),[255,255,255],.15);for(let x=X0-6;x<X1+6;x++){px(x,SILL,sc);if(hash(x>>2,9)<.7)px(x,SILL-1,sc);if(hash(x>>1,4)<.3)px(x,SILL-2,sc)}}
+  if(pet.gift){const fb=lit([70,120,200],e,1.2),fl=lit([150,200,240],e,1.2),q=lit([240,240,240],e);for(const [dx,dy,c] of [[0,0,q],[1,0,fb],[2,0,fb],[3,-1,fb],[4,-1,fl],[5,-1,fl],[6,-2,fl],[2,-1,fl],[4,0,fb]])px(147+dx,SILL-1+dy,c)}
+  if(A.chou){const fl=rt-fleeT<1.6&&fleeK===Math.floor(s.g*2)+1e6,q=fl?(rt-fleeT)/1.6:0,x=108+Math.sin(rt*.9)*14+q*30,y=SILL-8+Math.sin(rt*2.3)*4-q*70,f=Math.floor(rt*8)%2,w=lit([250,250,244],e,1.15),d=lit([60,60,70],e);
+    px(x,y,d);px(x,y+1,d);if(f){px(x-1,y-1,w);px(x-2,y-1,w);px(x-1,y,w);px(x+1,y-1,w);px(x+2,y-1,w);px(x+1,y,w);px(x-1,y+1,w);px(x+1,y+1,w)}else{px(x-1,y,w);px(x+1,y,w);px(x-1,y-1,w);px(x+1,y-1,w)}}
+  if(A.kotori&&rt-reactT<1.8){const q=(rt-reactT)/1.8,nx=136+Math.sin(q*6)*2,ny=SILL-8-q*14,nc=[255,240,200];for(const [dx,dy] of [[0,0],[1,0],[0,-1],[1,-1],[1,-2],[1,-3],[2,-3],[2,-2]])pa(nx+dx,ny+dy,nc,1-q)}
+  if(A.kotori){const face=Math.floor(rt/3)%2?1:-1,hop=(Math.floor(rt*2)%7==0||rt-reactT<.5)?1:0,bx=134,by=SILL-1-hop,br=lit([132,96,66],e,1.2),bb=lit([226,138,86],e,1.2),dk=lit([30,26,24],e),bk=lit([230,180,80],e,1.2);
+    for(const [dx,dy,c] of [[0,-3,br],[1,-3,br],[-1,-2,bk],[0,-2,dk],[1,-2,br],[2,-2,br],[0,-1,bb],[1,-1,bb],[2,-1,br],[3,-1,br],[4,-2,br],[1,0,dk],[2,0,dk]])px(bx+dx*face,by+dy,c)}
+  ctx.putImageData(img,0,0);
+}
+function h0(h,a,b){return h>a&&h<b}
+
+/* ---------- time ---------- */
+const DBG=location.hash=='#debug';
+const realG=()=>Date.now()/3600000*RX;
+let dbgOff=0,dbgMul=1,gameT=realG();
+/* ---------- records & sync ---------- */
+const KEY='madobe-kiroku-v2';
+let rec={},pet={days:[],gift:0},lastG=null,settled=false,db=null,uid=null,remote=false,wq=Promise.resolve(),reactT=-9,fleeT=-9,fleeK=null,flee=null;
+function saveLocal(){try{localStorage.setItem(KEY,JSON.stringify({rec,pet,lastG:gameT}))}catch(_){}}
+function loadLocal(){try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(v)return v;const o=JSON.parse(localStorage.getItem('madobe-kiroku-v1')||'null');return o?{rec:o.rec||{},pet:o.pet}:null}catch(_){return null}}
+const meta=()=>{const o={};for(const k in rec){const {img,...m}=rec[k];o[k]=m}return o};
+const enq=fn=>{wq=wq.then(fn).catch(e=>console.warn('sync',e&&e.code))};
+function push(id){saveLocal();if(!remote)return;const body={rec:meta(),pet:{days:pet.days.slice(-10),gift:pet.gift},lastG:gameT};enq(()=>db.doc(`data/users/${uid}/state`).set(body));
+  if(id&&rec[id]&&rec[id].img){const img=rec[id].img;enq(()=>db.doc(`data/users/${uid}/pic-${id}`).set({img}))}}
+function scan(from,to){let n=0;from=Math.max(from,to-24*7*RX);for(let g=from;g<to;g+=.25){const s=st(g);for(const ev of EV){if(!ev.manual&&!rec[ev.id]&&ev.on(s)){rec[ev.id]={st:'heard',at:Math.round(g/RX*3600000),h:s.h,se:s.se};n++}}}return n}
+function merge(rr,pics,rp){let ch=0;for(const k in rr||{}){const a=rec[k],b=rr[k],p=pics['pic-'+k];
+    if(!a||(a.st!='seen'&&b.st=='seen')){rec[k]={...b};if(p)rec[k].img=p.img;ch=1}else if(a.st=='seen'&&!a.img&&p){a.img=p.img;ch=1}}
+  if(rp){for(const d of rp.days||[])if(!pet.days.includes(d)){pet.days.push(d);ch=1}if(rp.gift&&!pet.gift){pet.gift=1;ch=1}}
+  return ch}
+function settle(from){if(settled)return;settled=true;
+  if(from!=null){const n=scan(from,gameT);if(n)setTimeout(()=>toast(`閉じていた間のことが ${n} つ、記録帳に残っている。`),500)}
+  book();push()}
+
+/* ---------- ui ---------- */
+const $=id=>document.getElementById(id);
+const tm=$('tm'),ph=$('ph'),toastEl=$('toast'),sl=$('sl');
+const phase=h=>h<4?'深夜':h<5.6?'夜明け前':h<7?'夜明け':h<11?'朝':h<14?'昼':h<17?'午後':h<19?'夕暮れ':h<21?'宵':'夜';
+const WXN={clear:'',cloudy:'くもり',rain:'雨',snow:'雪'};
+let drag=false,tt=0;
+function toast(m){toastEl.textContent=m;toastEl.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove('on'),2800)}
+function clockUI(s){const m=Math.floor(s.h*60)%1440;tm.textContent=String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+  ph.textContent=[DBG?'day '+s.day:'',SEAS[s.se],phase(s.h),WXN[s.w]].filter(Boolean).join(' · ');if(DBG&&!drag)sl.value=s.h.toFixed(2)}
+const when=r=>{const p=[];if(r.at){const d=new Date(r.at);p.push(`${d.getMonth()+1}月${d.getDate()}日`)}if(r.se!=null)p.push(SEAS[r.se]);if(r.h!=null)p.push(phase(r.h));return p.join(' · ')};
+const ORD=[...EV].sort((a,b)=>a.r-b.r);
+const tag=ev=>`<span class="rar r${ev.r}">${RAR[ev.r]}</span>`;
+function book(){let n=0;$('pages').innerHTML=ORD.map(ev=>{const r=rec[ev.id];
+  if(!r)return`<div class="pg none"><div class="pic">まだ白いページ</div><h3>？？？ ${tag(ev)}</h3></div>`;
+  n+=r.st=='seen';
+  if(r.st=='seen')return`<div class="pg"><div class="pic">${r.img?`<img alt="${ev.n}" src="${r.img}">`:'絵を読み込み中'}</div><h3>${ev.n} ${tag(ev)}</h3><p class="meta">${when(r)}</p><p>${ev.t}</p></div>`;
+  return`<div class="pg heard"><div class="pic">見ていない</div><h3>${ev.n} ${tag(ev)}</h3><p class="meta">${when(r)}</p><p>${ev.u}</p></div>`}).join('');
+  const h=Object.values(rec).filter(r=>r.st=='heard').length;$('cnt').textContent=`見た ${n} / ${EV.length}`+(h?` · 見ていない ${h}`:'')}
+function snap(){const c=document.createElement('canvas');c.width=124;c.height=128;c.getContext('2d').drawImage(cv,38,8,124,128,0,0,124,128);try{return c.toDataURL('image/png')}catch(_){return''}}
+function write(){const s=st(gameT),act=EV.filter(ev=>ev.on(s)).sort((a,b)=>b.r-a.r);
+  if(!act.length){toast('いつもの景色だ。');return}
+  const ev=act.find(v=>!rec[v.id]||rec[v.id].st!='seen');
+  if(!ev){toast('もう書き留めてある景色だ。');return}
+  const up=rec[ev.id]&&rec[ev.id].st=='heard';
+  rec[ev.id]={st:'seen',at:Date.now(),h:s.h,se:s.se,img:snap()};book();push(ev.id);
+  toast((up?`「${ev.n}」を、今度は自分の目で見た。`:`「${ev.n}」を書き留めた。`)+(ev.r==3?' ── 幻の景色だ。':''))}
+
+$('write').addEventListener('click',write);
+cv.addEventListener('click',ev=>{const r=cv.getBoundingClientRect(),x=(ev.clientX-r.left)/r.width*W,y=(ev.clientY-r.top)/r.height*H,s=st(gameT),rt=performance.now()/1000;
+  const has=id=>EV.find(v=>v.id==id).on(s);
+  if(has('kotori')&&Math.abs(x-136)<10&&y>SILL-14&&y<SILL+5){reactT=rt;const rd=Math.floor(gameT/RX/24);
+    if(!pet.days.includes(rd))pet.days.push(rd);
+    if(pet.days.length>=3&&!pet.gift){pet.gift=1;toast('小鳥がくちばしで、何かを窓枠に置いた。')}
+    else toast(['指を近づけても、小鳥は逃げなかった。','小鳥が小さく鳴いた。','小鳥が首をかしげている。'][pet.days.length%3]);
+    push();return}
+  const bx=108+Math.sin(rt*.9)*14,by=SILL-8+Math.sin(rt*2.3)*4;
+  if(has('chou')&&Math.abs(x-bx)<9&&Math.abs(y-by)<9){fleeT=rt;fleeK=Math.floor(s.g*2)+1e6;setTimeout(()=>{flee=Math.floor(st(gameT).g*2)},1600);toast('手を伸ばすと、蝶はふわりと飛んでいった。');return}
+  write()});
+addEventListener('visibilitychange',()=>{if(document.hidden&&settled)push()});
+addEventListener('pagehide',()=>{if(settled)saveLocal()});
+
+/* ---------- debug (#debug) ---------- */
+if(!DBG)document.querySelector('details').remove();
+else{
+  const muUI=()=>document.querySelectorAll('#speeds button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.s===dbgMul));muUI();
+  document.querySelectorAll('#speeds button').forEach(b=>b.addEventListener('click',()=>{dbgMul=+b.dataset.s;muUI()}));
+  sl.addEventListener('input',()=>{drag=true;const h=gameT%24;dbgOff+=(+sl.value)-h;gameT=realG()+dbgOff});
+  sl.addEventListener('change',()=>{drag=false});
+  document.querySelectorAll('#seas button').forEach(b=>b.addEventListener('click',()=>{const day=Math.floor(gameT/24),y0=Math.floor(day/(SD*4))*SD*4,td=y0+(+b.dataset.q)*SD+1;dbgOff+=td*24+gameT%24-gameT;gameT=realG()+dbgOff}));
+  $('skip').addEventListener('click',()=>{const f=gameT;dbgOff+=24*RX;gameT=realG()+dbgOff;const n=scan(f,gameT);book();push();toast(n?`閉じていた間のことが ${n} つ、記録帳に残っている。`:'閉じていた間、特に何もなかったようだ。')});
+  $('day').addEventListener('click',()=>{dbgOff+=24;gameT=realG()+dbgOff});
+  $('reset').addEventListener('click',()=>{rec={};pet={days:[],gift:0};book();push();toast('記録帳を白紙に戻した。')});
+}
+
+/* ---------- start ---------- */
+{const L=loadLocal();if(L){rec=L.rec||{};pet=L.pet||pet;lastG=typeof L.lastG=='number'?L.lastG:null}}
+book();
+(async()=>{let d=null,u=null,id=null;
+  try{if(window.claude&&window.claude.use){[d,u]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);if(u)id=await u.id()}}catch(_){}
+  if(!d||!id){$('sync').textContent='記録はこのブラウザの中に保存されます。';settle(lastG);return}
+  db=d;uid=id;
+  const timer=setTimeout(()=>{if(!settled){$('sync').textContent='記録の読み込みに時間がかかっています。いまはこのブラウザの記録を表示しています。';settle(lastG)}},10000);
+  let first=true;
+  db.collection(`data/users/${uid}`).onSnapshot(snap=>{if(first&&snap.metadata.fromCache)return;
+    const docs={};for(const x of snap.docs)docs[x.id]=x.data();const sd=docs.state;
+    const ch=merge(sd&&sd.rec,docs,sd&&sd.pet);
+    if(first){first=false;clearTimeout(timer);remote=true;$('sync').textContent='記録はアカウントに保存され、スマホとPCで同じ記録帳が続きます。';
+      const from=sd&&typeof sd.lastG=='number'?Math.max(sd.lastG,lastG||0):lastG;
+      if(!settled)settle(from);else{book();push()}
+      for(const k in rec)if(rec[k].st=='seen'&&rec[k].img&&!docs['pic-'+k])push(k);
+    }else if(ch){book();saveLocal()}
+  },e=>{clearTimeout(timer);$('sync').textContent='記録はこのブラウザの中に保存されます。';settle(lastG)});
+})();
+let last=performance.now(),acc=0;
+function loop(t){const dt=Math.min(.25,(t-last)/1000);last=t;acc+=dt;
+  if(DBG&&!drag)dbgOff+=dt*(dbgMul-1)*RX/3600;
+  gameT=realG()+dbgOff;
+  if(acc>1/24){acc=0;const s=st(gameT),A={};for(const ev of EV)if(ev.on(s))A[ev.id]=1;draw(s,A,t/1000);clockUI(s)}
+  requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
